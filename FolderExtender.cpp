@@ -1,5 +1,3 @@
-
-#include "pch.h"
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -7,6 +5,11 @@
 #include <fstream>
 #include <iostream>
 #include <malloc.h>
+#include "GP4MemLib/GP4MemLib.h"
+#include "IniLib/IniLib.h"
+
+using namespace GP4MemLib;
+using namespace IniLib;
 
 void CreateExampleIniFile(const char* iniFilePath) {
     std::ofstream iniFile(iniFilePath);
@@ -34,18 +37,6 @@ void CreateExampleIniFile(const char* iniFilePath) {
     iniFile << "file19=tvoverlay.tex\n";
     iniFile.close();
     OutputDebugStringA("FolderExtender: Sample FolderContent.ini created\n");
-}
-
-void PatchAddress(LPVOID address, BYTE* patch, SIZE_T size) {
-    DWORD oldProtect;
-    if (VirtualProtect(address, size, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        memcpy(address, patch, size);
-        VirtualProtect(address, size, oldProtect, &oldProtect);
-        OutputDebugStringA("FolderExtender: Memory patch successful\n");
-    }
-    else {
-        OutputDebugStringA("FolderExtender: Error in VirtualProtect during patch\n");
-    }
 }
 
 void GetFilesFromFolder(const std::string& folderPath, std::vector<std::string>& files) {
@@ -84,7 +75,7 @@ void GetFilesFromFolder(const std::string& folderPath, std::vector<std::string>&
 
 
 DWORD WINAPI MainThread(LPVOID param) {
-    Sleep(5000);
+    //Sleep(5000);
 
     char iniFilePath[MAX_PATH];
     GetModuleFileNameA(NULL, iniFilePath, MAX_PATH);
@@ -156,8 +147,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << std::hex << std::showbase << newTable;
     OutputDebugStringA(("FolderExtender: Address of new table: " + outputString.str() + "\n").c_str());
 
-    PatchAddress((LPVOID)0x0046B1C1, (BYTE*)&newTable, sizeof(newTable));
-    PatchAddress((LPVOID)0x0046AF48, (BYTE*)&newTable, sizeof(newTable));
+    MemUtils::patchAddress((LPVOID)0x0046B1C1, (BYTE*)&newTable, sizeof(newTable));
+    MemUtils::patchAddress((LPVOID)0x0046AF48, (BYTE*)&newTable, sizeof(newTable));
 
     void* endLoopAddress = newTable + files.size();
 
@@ -165,8 +156,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << std::hex << std::showbase << endLoopAddress;
     OutputDebugStringA(("FolderExtender: Address of end of loop: " + outputString.str() + "\n").c_str());
 
-    PatchAddress((LPVOID)0x0046B1EA, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
-    PatchAddress((LPVOID)0x0046AF75, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
+    MemUtils::patchAddress((LPVOID)0x0046B1EA, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
+    MemUtils::patchAddress((LPVOID)0x0046AF75, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
 
     return 0;
 }
