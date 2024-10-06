@@ -81,10 +81,14 @@ DWORD WINAPI MainThread(LPVOID param) {
     GetModuleFileNameA(NULL, iniFilePath, MAX_PATH);
     std::string::size_type pos = std::string(iniFilePath).find_last_of("\\/");
     std::string folderPath = std::string(iniFilePath).substr(0, pos);
-    std::string iniFile = folderPath + "\\FolderContent.ini";
+    std::string iniFileFQN = folderPath + "\\FolderContent.ini";
 
-    if (GetFileAttributesA(iniFile.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        CreateExampleIniFile(iniFile.c_str());
+    IniLib::IniFile iniFile;
+
+    iniFile.load(iniFileFQN);
+
+    if (GetFileAttributesA(iniFileFQN.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        CreateExampleIniFile(iniFileFQN.c_str());
     }
     else {
         OutputDebugStringA("FolderExtender: FolderContent.ini exists\n");
@@ -95,17 +99,28 @@ DWORD WINAPI MainThread(LPVOID param) {
     std::vector<std::string> folders;
 
     // read folders
-    for (int i = 1;; i++) {
+    IniSection foldersSection = iniFile["Folders"];
+    for (int i = 0; i < foldersSection.keyCount(); i++)
+    {
         std::ostringstream key;
         key << "folder" << i;
-        GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFile.c_str());
-        if (strlen(buffer) == 0) {
-            break;
-        }
-        std::string folderPathRelative = folderPath + "\\" + buffer;
+
+        std::string folderPathRelative = folderPath + "\\" + foldersSection[key.str().c_str()].getAs<std::string>();
         OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
         folders.push_back(folderPathRelative);
     }
+
+    //for (int i = 1;; i++) {
+    //    std::ostringstream key;
+    //    key << "folder" << i;
+    //    GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFileFQN.c_str());
+    //    if (strlen(buffer) == 0) {
+    //        break;
+    //    }
+    //    std::string folderPathRelative = folderPath + "\\" + buffer;
+    //    OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
+    //    folders.push_back(folderPathRelative);
+    //}
 
     // Read files from the specified folders and subfolders
     for (const auto& folder : folders) {
@@ -114,16 +129,28 @@ DWORD WINAPI MainThread(LPVOID param) {
     }
 
     // Optional: Additionally read files explicitly specified in the INI file
-    for (int i = 1;; i++) {
+    IniSection filesSection = iniFile["Files"];
+    for (int i = 0; i < filesSection.keyCount(); i++)
+    {
         std::ostringstream key;
         key << "file" << i;
-        GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFile.c_str());
-        if (strlen(buffer) == 0) {
-            break;
-        }
-        OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + std::string(buffer) + "\n").c_str());
-        files.push_back(buffer);
+
+        std::string fileName = filesSection[key.str().c_str()].getAs<std::string>();
+
+        OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + fileName + "\n").c_str());
+        files.push_back(fileName);
     }
+
+    //for (int i = 1;; i++) {
+    //    std::ostringstream key;
+    //    key << "file" << i;
+    //    GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFileFQN.c_str());
+    //    if (strlen(buffer) == 0) {
+    //        break;
+    //    }
+    //    OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + std::string(buffer) + "\n").c_str());
+    //    files.push_back(buffer);
+    //}
 
     for (const auto& file : files) {
         OutputDebugStringA(("FolderExtender: File entry: " + file + "\n").c_str());
