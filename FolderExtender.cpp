@@ -12,30 +12,33 @@ using namespace GP4MemLib;
 using namespace IniLib;
 
 void CreateExampleIniFile(const char* iniFilePath) {
-    std::ofstream iniFile(iniFilePath);
-    iniFile << "[content]\n";
-    iniFile << "folder1=cars\n"; // folders are relative to the gp4 folder path
-    iniFile << "folder2=MAPS\\RESOURCES\n"; // with added "maps\resources" and "cars" folders, gp4 first reads and uses ALL files from these local directories, then it uses (possible) additional files from WAD-files
-    iniFile << "file1=driver9_1.tex\n";
-    iniFile << "file2=driver9_2.tex\n";
-    iniFile << "file3=driver10_1.tex\n";
-    iniFile << "file4=driver10_2.tex\n";
-    iniFile << "file5=driver21_1.tex\n";
-    iniFile << "file6=driver21_2.tex\n";
-    iniFile << "file7=cockpit_damage.tex\n";
-    iniFile << "file8=hi_cockpit_damage.tex\n";
-    iniFile << "file9=dial.tex\n";
-    iniFile << "file10=inner_dial.tex\n";
-    iniFile << "file11=menu.gpm\n";
-    iniFile << "file12=gp2001_english.gps\n";
-    iniFile << "file13=gp2001_deutsch.gps\n";
-    iniFile << "file14=gp2001_espanol.gps\n";
-    iniFile << "file15=gp2001_francais.gps\n";
-    iniFile << "file16=gp2001_italiano.gps\n";
-    iniFile << "file17=29.gpi\n";
-    iniFile << "file18=digital.tga\n";
-    iniFile << "file19=tvoverlay.tex\n";
-    iniFile.close();
+    IniFile iniFile;
+
+    iniFile["Folders"]["Folder1"] = "cars";
+    iniFile["Folders"]["Folder2"] = "MAPS\\RESOURCES";
+
+    iniFile["Files"]["File1"] = "driver9_1.tex";
+    iniFile["Files"]["File2"] = "driver9_2.tex";
+    iniFile["Files"]["File3"] = "driver10_1.tex";
+    iniFile["Files"]["File4"] = "driver10_2.tex";
+    iniFile["Files"]["File5"] = "driver21_1.tex";
+    iniFile["Files"]["File6"] = "driver21_2.tex";
+    iniFile["Files"]["File7"] = "cockpit_damage.tex";
+    iniFile["Files"]["File8"] = "hi_cockpit_damage.tex";
+    iniFile["Files"]["File9"] = "dial.tex";
+    iniFile["Files"]["File10"] = "inner_dial.tex";
+    iniFile["Files"]["File11"] = "menu.gpm";
+    iniFile["Files"]["File12"] = "gp2001_english.gps";
+    iniFile["Files"]["File13"] = "gp2001_deutsch.gps";
+    iniFile["Files"]["File14"] = "gp2001_espanol.gps";
+    iniFile["Files"]["File15"] = "gp2001_francais.gps";
+    iniFile["Files"]["File16"] = "gp2001_italiano.gps";
+    iniFile["Files"]["File17"] = "29.gpi";
+    iniFile["Files"]["File18"] = "digital.tga";
+    iniFile["Files"]["File19"] = "tvoverlay.tex";
+
+    iniFile.save(iniFilePath);
+
     OutputDebugStringA("FolderExtender: Sample FolderContent.ini created\n");
 }
 
@@ -94,33 +97,19 @@ DWORD WINAPI MainThread(LPVOID param) {
         OutputDebugStringA("FolderExtender: FolderContent.ini exists\n");
     }
 
-    char buffer[256];
     std::vector<std::string> files;
     std::vector<std::string> folders;
 
     // read folders
-    IniSection foldersSection = iniFile["Folders"];
-    for (int i = 0; i < foldersSection.keyCount(); i++)
+    for (size_t i = 1; i <= iniFile["Folders"].keyCount(); i++)
     {
         std::ostringstream key;
-        key << "folder" << i;
+        key << "Folder" << i;
 
-        std::string folderPathRelative = folderPath + "\\" + foldersSection[key.str().c_str()].getAs<std::string>();
+        std::string folderPathRelative = folderPath + "\\" + iniFile["Folders"][key.str()].getAs<std::string>();
         OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
         folders.push_back(folderPathRelative);
     }
-
-    //for (int i = 1;; i++) {
-    //    std::ostringstream key;
-    //    key << "folder" << i;
-    //    GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFileFQN.c_str());
-    //    if (strlen(buffer) == 0) {
-    //        break;
-    //    }
-    //    std::string folderPathRelative = folderPath + "\\" + buffer;
-    //    OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
-    //    folders.push_back(folderPathRelative);
-    //}
 
     // Read files from the specified folders and subfolders
     for (const auto& folder : folders) {
@@ -129,28 +118,16 @@ DWORD WINAPI MainThread(LPVOID param) {
     }
 
     // Optional: Additionally read files explicitly specified in the INI file
-    IniSection filesSection = iniFile["Files"];
-    for (int i = 0; i < filesSection.keyCount(); i++)
+    for (size_t i = 1; i <= iniFile["Files"].keyCount(); i++)
     {
         std::ostringstream key;
-        key << "file" << i;
+        key << "File" << i;
 
-        std::string fileName = filesSection[key.str().c_str()].getAs<std::string>();
+        std::string fileName = iniFile["Files"][key.str()].getAs<std::string>();
 
         OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + fileName + "\n").c_str());
         files.push_back(fileName);
     }
-
-    //for (int i = 1;; i++) {
-    //    std::ostringstream key;
-    //    key << "file" << i;
-    //    GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFileFQN.c_str());
-    //    if (strlen(buffer) == 0) {
-    //        break;
-    //    }
-    //    OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + std::string(buffer) + "\n").c_str());
-    //    files.push_back(buffer);
-    //}
 
     for (const auto& file : files) {
         OutputDebugStringA(("FolderExtender: File entry: " + file + "\n").c_str());
@@ -165,8 +142,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << files.size();
     OutputDebugStringA(("FolderExtender: Number of Files: " + outputString.str() + "\n").c_str());
 
-    char** newTable = new char* [files.size()];
-    for (int i = 0; i < files.size(); i++) {
+    char** newTable = new char* [files.size()*MAX_PATH];
+    for (size_t i = 0; i < files.size(); i++) {
         newTable[i] = _strdup(files[i].c_str());
     }
 
