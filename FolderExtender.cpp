@@ -106,9 +106,20 @@ DWORD WINAPI MainThread(LPVOID param) {
         std::ostringstream key;
         key << "Folder" << i;
 
-        std::string folderPathRelative = folderPath + "\\" + iniFile["Folders"][key.str()].getAs<std::string>();
-        OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
-        folders.push_back(folderPathRelative);
+        try
+        {
+            std::string folderPathRelative = folderPath + "\\" + iniFile["Folders"][key.str()].getAs<std::string>();
+            OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
+            folders.push_back(folderPathRelative);
+        }
+        catch (IniLib::IniValueConvertException ex)
+        {
+            OutputDebugStringA(("FolderExtender: entry " + key.str() + " not found\n").c_str());
+        }
+        catch (std::exception ex)
+        {
+            OutputDebugStringA(("FolderExtender: Error while evaluating entry " + key.str() + "\n").c_str());
+        }
     }
 
     // Read files from the specified folders and subfolders
@@ -123,10 +134,21 @@ DWORD WINAPI MainThread(LPVOID param) {
         std::ostringstream key;
         key << "File" << i;
 
-        std::string fileName = iniFile["Files"][key.str()].getAs<std::string>();
+        try
+        {
+            std::string fileName = iniFile["Files"][key.str()].getAs<std::string>();
 
-        OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + fileName + "\n").c_str());
-        files.push_back(fileName);
+            OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + fileName + "\n").c_str());
+            files.push_back(fileName);
+        }
+        catch (IniLib::IniValueConvertException ex)
+        {
+            OutputDebugStringA(("FolderExtender: entry " + key.str() + " not found\n").c_str());
+        }
+        catch (std::exception ex)
+        {
+            OutputDebugStringA(("FolderExtender: Error while evaluating entry " + key.str() + "\n").c_str());
+        }
     }
 
     for (const auto& file : files) {
