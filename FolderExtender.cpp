@@ -1,5 +1,3 @@
-
-#include "pch.h"
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -7,45 +5,41 @@
 #include <fstream>
 #include <iostream>
 #include <malloc.h>
+#include "GP4MemLib/GP4MemLib.h"
+#include "IniLib/IniLib.h"
+
+using namespace GP4MemLib;
+using namespace IniLib;
 
 void CreateExampleIniFile(const char* iniFilePath) {
-    std::ofstream iniFile(iniFilePath);
-    iniFile << "[content]\n";
-    iniFile << "folder1=cars\n"; // folders are relative to the gp4 folder path
-    iniFile << "folder2=MAPS\\RESOURCES\n"; // with added "maps\resources" and "cars" folders, gp4 first reads and uses ALL files from these local directories, then it uses (possible) additional files from WAD-files
-    iniFile << "file1=driver9_1.tex\n";
-    iniFile << "file2=driver9_2.tex\n";
-    iniFile << "file3=driver10_1.tex\n";
-    iniFile << "file4=driver10_2.tex\n";
-    iniFile << "file5=driver21_1.tex\n";
-    iniFile << "file6=driver21_2.tex\n";
-    iniFile << "file7=cockpit_damage.tex\n";
-    iniFile << "file8=hi_cockpit_damage.tex\n";
-    iniFile << "file9=dial.tex\n";
-    iniFile << "file10=inner_dial.tex\n";
-    iniFile << "file11=menu.gpm\n";
-    iniFile << "file12=gp2001_english.gps\n";
-    iniFile << "file13=gp2001_deutsch.gps\n";
-    iniFile << "file14=gp2001_espanol.gps\n";
-    iniFile << "file15=gp2001_francais.gps\n";
-    iniFile << "file16=gp2001_italiano.gps\n";
-    iniFile << "file17=29.gpi\n";
-    iniFile << "file18=digital.tga\n";
-    iniFile << "file19=tvoverlay.tex\n";
-    iniFile.close();
-    OutputDebugStringA("FolderExtender: Sample FolderContent.ini created\n");
-}
+    IniFile iniFile;
 
-void PatchAddress(LPVOID address, BYTE* patch, SIZE_T size) {
-    DWORD oldProtect;
-    if (VirtualProtect(address, size, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        memcpy(address, patch, size);
-        VirtualProtect(address, size, oldProtect, &oldProtect);
-        OutputDebugStringA("FolderExtender: Memory patch successful\n");
-    }
-    else {
-        OutputDebugStringA("FolderExtender: Error in VirtualProtect during patch\n");
-    }
+    iniFile["Folders"]["Folder1"] = "cars";
+    iniFile["Folders"]["Folder2"] = "MAPS\\RESOURCES";
+
+    iniFile["Files"]["File1"] = "driver9_1.tex";
+    iniFile["Files"]["File2"] = "driver9_2.tex";
+    iniFile["Files"]["File3"] = "driver10_1.tex";
+    iniFile["Files"]["File4"] = "driver10_2.tex";
+    iniFile["Files"]["File5"] = "driver21_1.tex";
+    iniFile["Files"]["File6"] = "driver21_2.tex";
+    iniFile["Files"]["File7"] = "cockpit_damage.tex";
+    iniFile["Files"]["File8"] = "hi_cockpit_damage.tex";
+    iniFile["Files"]["File9"] = "dial.tex";
+    iniFile["Files"]["File10"] = "inner_dial.tex";
+    iniFile["Files"]["File11"] = "menu.gpm";
+    iniFile["Files"]["File12"] = "gp2001_english.gps";
+    iniFile["Files"]["File13"] = "gp2001_deutsch.gps";
+    iniFile["Files"]["File14"] = "gp2001_espanol.gps";
+    iniFile["Files"]["File15"] = "gp2001_francais.gps";
+    iniFile["Files"]["File16"] = "gp2001_italiano.gps";
+    iniFile["Files"]["File17"] = "29.gpi";
+    iniFile["Files"]["File18"] = "digital.tga";
+    iniFile["Files"]["File19"] = "tvoverlay.tex";
+
+    iniFile.save(iniFilePath);
+
+    OutputDebugStringA("FolderExtender: Sample FolderContent.ini created\n");
 }
 
 void GetFilesFromFolder(const std::string& folderPath, std::vector<std::string>& files) {
@@ -84,36 +78,48 @@ void GetFilesFromFolder(const std::string& folderPath, std::vector<std::string>&
 
 
 DWORD WINAPI MainThread(LPVOID param) {
-    Sleep(5000);
+    //Sleep(5000);
 
     char iniFilePath[MAX_PATH];
     GetModuleFileNameA(NULL, iniFilePath, MAX_PATH);
     std::string::size_type pos = std::string(iniFilePath).find_last_of("\\/");
     std::string folderPath = std::string(iniFilePath).substr(0, pos);
-    std::string iniFile = folderPath + "\\FolderContent.ini";
+    std::string iniFileFQN = folderPath + "\\FolderContent.ini";
 
-    if (GetFileAttributesA(iniFile.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        CreateExampleIniFile(iniFile.c_str());
+    IniLib::IniFile iniFile;
+
+    iniFile.load(iniFileFQN);
+
+    if (GetFileAttributesA(iniFileFQN.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        CreateExampleIniFile(iniFileFQN.c_str());
     }
     else {
         OutputDebugStringA("FolderExtender: FolderContent.ini exists\n");
     }
 
-    char buffer[256];
     std::vector<std::string> files;
     std::vector<std::string> folders;
 
     // read folders
-    for (int i = 1;; i++) {
+    for (size_t i = 1; i <= iniFile["Folders"].keyCount(); i++)
+    {
         std::ostringstream key;
-        key << "folder" << i;
-        GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFile.c_str());
-        if (strlen(buffer) == 0) {
-            break;
+        key << "Folder" << i;
+
+        try
+        {
+            std::string folderPathRelative = folderPath + "\\" + iniFile["Folders"][key.str()].getAs<std::string>();
+            OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
+            folders.push_back(folderPathRelative);
         }
-        std::string folderPathRelative = folderPath + "\\" + buffer;
-        OutputDebugStringA(("FolderExtender: Adding folder to search: " + folderPathRelative + "\n").c_str());
-        folders.push_back(folderPathRelative);
+        catch (IniLib::IniValueConvertException ex)
+        {
+            OutputDebugStringA(("FolderExtender: entry " + key.str() + " not found\n").c_str());
+        }
+        catch (std::exception ex)
+        {
+            OutputDebugStringA(("FolderExtender: Error while evaluating entry " + key.str() + "\n").c_str());
+        }
     }
 
     // Read files from the specified folders and subfolders
@@ -123,15 +129,26 @@ DWORD WINAPI MainThread(LPVOID param) {
     }
 
     // Optional: Additionally read files explicitly specified in the INI file
-    for (int i = 1;; i++) {
+    for (size_t i = 1; i <= iniFile["Files"].keyCount(); i++)
+    {
         std::ostringstream key;
-        key << "file" << i;
-        GetPrivateProfileStringA("content", key.str().c_str(), "", buffer, sizeof(buffer), iniFile.c_str());
-        if (strlen(buffer) == 0) {
-            break;
+        key << "File" << i;
+
+        try
+        {
+            std::string fileName = iniFile["Files"][key.str()].getAs<std::string>();
+
+            OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + fileName + "\n").c_str());
+            files.push_back(fileName);
         }
-        OutputDebugStringA(("FolderExtender: Adding file from FolderContent.ini: " + std::string(buffer) + "\n").c_str());
-        files.push_back(buffer);
+        catch (IniLib::IniValueConvertException ex)
+        {
+            OutputDebugStringA(("FolderExtender: entry " + key.str() + " not found\n").c_str());
+        }
+        catch (std::exception ex)
+        {
+            OutputDebugStringA(("FolderExtender: Error while evaluating entry " + key.str() + "\n").c_str());
+        }
     }
 
     for (const auto& file : files) {
@@ -147,8 +164,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << files.size();
     OutputDebugStringA(("FolderExtender: Number of Files: " + outputString.str() + "\n").c_str());
 
-    char** newTable = new char* [files.size()];
-    for (int i = 0; i < files.size(); i++) {
+    char** newTable = new char* [files.size()*MAX_PATH];
+    for (size_t i = 0; i < files.size(); i++) {
         newTable[i] = _strdup(files[i].c_str());
     }
 
@@ -156,8 +173,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << std::hex << std::showbase << newTable;
     OutputDebugStringA(("FolderExtender: Address of new table: " + outputString.str() + "\n").c_str());
 
-    PatchAddress((LPVOID)0x0046B1C1, (BYTE*)&newTable, sizeof(newTable));
-    PatchAddress((LPVOID)0x0046AF48, (BYTE*)&newTable, sizeof(newTable));
+    MemUtils::patchAddress((LPVOID)0x0046B1C1, (BYTE*)&newTable, sizeof(newTable));
+    MemUtils::patchAddress((LPVOID)0x0046AF48, (BYTE*)&newTable, sizeof(newTable));
 
     void* endLoopAddress = newTable + files.size();
 
@@ -165,8 +182,8 @@ DWORD WINAPI MainThread(LPVOID param) {
     outputString << std::hex << std::showbase << endLoopAddress;
     OutputDebugStringA(("FolderExtender: Address of end of loop: " + outputString.str() + "\n").c_str());
 
-    PatchAddress((LPVOID)0x0046B1EA, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
-    PatchAddress((LPVOID)0x0046AF75, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
+    MemUtils::patchAddress((LPVOID)0x0046B1EA, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
+    MemUtils::patchAddress((LPVOID)0x0046AF75, (BYTE*)&endLoopAddress, sizeof(endLoopAddress));
 
     return 0;
 }

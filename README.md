@@ -14,15 +14,17 @@ FolderExtender is a C++-based DLL used in Geoff Crammond's Grand Prix 4 (version
 The `FolderContent.ini` file follows this format:
 
 ```ini
-[content]
-folder1=cars
-folder2=MAPS\RESOURCES
-file1=driver9_1.tex
-file2=driver9_2.tex
-file3=driver10_1.tex
+[Folders]
+Folder1=cars
+Folder2=MAPS\RESOURCES
+
+[Files]
+File1=driver9_1.tex
+File2=driver9_2.tex
+File3=driver10_1.tex
 ...
-folder1, folder2, etc.: These are folder paths relative to the GP4 game directory. The program searches these folders recursively for files.
-file1, file2, etc.: Specific files to be loaded, independent of the folders specified.
+Folder1, Folder2, etc.: These are folder paths relative to the GP4 game directory. The program searches these folders recursively for files.
+File1, File2, etc.: Specific files to be loaded, independent of the folders specified.
 ```
 
 ## Installation
